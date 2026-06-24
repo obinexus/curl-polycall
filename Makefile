@@ -1,8 +1,4 @@
-ifeq ($(OS),Windows_NT)
-ifeq ($(origin CC),default)
-CC := gcc
-endif
-else
+ifneq ($(OS),Windows_NT)
 ifeq ($(origin CC),default)
 CC := cc
 endif
@@ -41,9 +37,13 @@ SHARED_FLAGS := -shared
 endif
 endif
 
-.PHONY: all clean dirs install uninstall run FORCE
+.PHONY: all clean dirs install uninstall run windows-build FORCE
 
+ifeq ($(OS),Windows_NT)
+all: windows-build
+else
 all: dirs $(LIB)
+endif
 
 FORCE:
 
@@ -61,9 +61,8 @@ $(OBJ): FORCE $(SRC) src/polycall_ffi.h | dirs
 	$(CC) $(CFLAGS) $(PIC_FLAGS) -c $(SRC) -o $(OBJ)
 
 ifeq ($(OS),Windows_NT)
-$(LIB): $(OBJ) | dirs
-	$(CC) $(SHARED_FLAGS) $(OBJ) -o $(TMP_LIB)
-	@powershell -NoProfile -Command "try { if (Test-Path '$(LIB)') { Remove-Item -Force '$(LIB)' }; Move-Item -Force '$(TMP_LIB)' '$(LIB)' } catch { Remove-Item -Force -ErrorAction SilentlyContinue '$(TMP_LIB)'; Write-Error 'Cannot replace $(LIB). Stop the running Python server first because Windows keeps loaded DLLs locked.'; exit 1 }"
+windows-build: dirs
+	powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1
 else
 $(LIB): $(OBJ) | dirs
 	$(CC) $(SHARED_FLAGS) $(OBJ) -o $(LIB)
