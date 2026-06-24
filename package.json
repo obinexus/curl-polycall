@@ -48,6 +48,7 @@
     "build:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
     "clean": "make clean",
     "demo": "sh examples/curl.sh",
+    "demo:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File examples/curl.ps1",
     "start": "python server.py",
     "start:python3": "python3 server.py",
     "test:ffi": "python -c \"import ffi; runtime = ffi.load(); print(runtime.command('ping'))\""

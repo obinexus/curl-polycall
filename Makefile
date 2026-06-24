@@ -19,6 +19,7 @@ ifeq ($(OS),Windows_NT)
 PIC_FLAGS :=
 PYTHON ?= python
 LIB := $(BIN_DIR)/polycall_ffi.dll
+TMP_LIB := $(BIN_DIR)/polycall_ffi.tmp.dll
 SHARED_FLAGS := -shared
 else
 PYTHON ?= python3
@@ -51,8 +52,14 @@ endif
 $(OBJ): FORCE $(SRC) src/polycall_ffi.h | dirs
 	$(CC) $(CFLAGS) $(PIC_FLAGS) -c $(SRC) -o $(OBJ)
 
+ifeq ($(OS),Windows_NT)
+$(LIB): $(OBJ) | dirs
+	$(CC) $(SHARED_FLAGS) $(OBJ) -o $(TMP_LIB)
+	@powershell -NoProfile -Command "try { if (Test-Path '$(LIB)') { Remove-Item -Force '$(LIB)' }; Move-Item -Force '$(TMP_LIB)' '$(LIB)' } catch { Remove-Item -Force -ErrorAction SilentlyContinue '$(TMP_LIB)'; Write-Error 'Cannot replace $(LIB). Stop the running Python server first because Windows keeps loaded DLLs locked.'; exit 1 }"
+else
 $(LIB): $(OBJ) | dirs
 	$(CC) $(SHARED_FLAGS) $(OBJ) -o $(LIB)
+endif
 
 run: all
 	$(PYTHON) server.py
@@ -60,6 +67,7 @@ run: all
 ifeq ($(OS),Windows_NT)
 clean:
 	@if exist "build\bin\polycall_ffi.dll" del /q "build\bin\polycall_ffi.dll"
+	@if exist "build\bin\polycall_ffi.tmp.dll" del /q "build\bin\polycall_ffi.tmp.dll"
 	@if exist "build\obj\polycall_ffi.o" del /q "build\obj\polycall_ffi.o"
 else
 clean:

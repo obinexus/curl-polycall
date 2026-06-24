@@ -26,6 +26,19 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
 
         try:
+            if parsed.path == "/":
+                return self._send_json(json.dumps({
+                    "status": "YES",
+                    "message": "curl-polycall direct ffi server",
+                    "endpoints": [
+                        "/command?cmd=ping",
+                        "/command?cmd=health",
+                        "/command?cmd=unknown",
+                        "/micro/attach?path=build/bin/example.nsigii",
+                        "/micro/detach?path=build/bin/example.nsigii"
+                    ]
+                }))
+
             if parsed.path == "/command":
                 command = query.get("cmd", [""])[0]
                 return self._send_json(runtime.command(command))

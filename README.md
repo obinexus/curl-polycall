@@ -20,6 +20,7 @@ curl-polycall/
 |-- docs/
 |   `-- FAULT_TOLERANT_FFI_PROOF.md
 |-- examples/
+|   |-- curl.ps1
 |   `-- curl.sh
 |-- scripts/
 |   `-- build-windows.ps1
@@ -46,6 +47,8 @@ Useful npm scripts:
 npm run build
 npm run build:windows
 npm start
+npm run demo
+npm run demo:windows
 npm run test:ffi
 ```
 
@@ -80,6 +83,10 @@ Windows PowerShell:
 python server.py
 ```
 
+If Windows reports `cannot open file 'build\bin\polycall_ffi.dll'` or
+`Permission denied`, stop the running server with `Ctrl+C` before rebuilding.
+Python keeps the DLL loaded while `server.py` is running.
+
 ## Direct Python FFI
 
 ```python
@@ -93,13 +100,37 @@ runtime.detach("build/bin/example.nsigii")
 
 ## Curl endpoints
 
+Start the server first:
+
 ```sh
+python server.py
+```
+
+Then call individual endpoints:
+
+```sh
+curl "http://127.0.0.1:8084/"
 curl "http://127.0.0.1:8084/command?cmd=ping"
 curl "http://127.0.0.1:8084/command?cmd=health"
 curl "http://127.0.0.1:8084/command?cmd=unknown"
 curl "http://127.0.0.1:8084/micro/attach?path=build/bin/example.nsigii"
 curl "http://127.0.0.1:8084/micro/detach?path=build/bin/example.nsigii"
 ```
+
+Or run the example script:
+
+```sh
+bash examples/curl.sh
+```
+
+From PowerShell:
+
+```powershell
+.\examples\curl.ps1
+```
+
+Do not run `curl.exe examples/curl.sh`; that asks curl to fetch a URL named
+`examples/curl.sh`. Use `bash examples/curl.sh` or the PowerShell script above.
 
 Each response is trinary JSON:
 
