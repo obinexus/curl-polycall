@@ -129,6 +129,10 @@ From PowerShell:
 .\examples\curl.ps1
 ```
 
+Both example scripts wait briefly for `http://127.0.0.1:8084/` before sending
+the endpoint requests, so they can be launched while `server.py` is still
+starting.
+
 Do not run `curl.exe examples/curl.sh`; that asks curl to fetch a URL named
 `examples/curl.sh`. Use `bash examples/curl.sh` or the PowerShell script above.
 
