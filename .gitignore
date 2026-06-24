@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+
+build/bin/*
+!build/bin/.gitkeep
+
+build/obj/*
+!build/obj/.gitkeep

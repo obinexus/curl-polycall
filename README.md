@@ -29,7 +29,24 @@ curl-polycall/
 |-- ffi.py
 |-- server.py
 |-- Makefile
+|-- package.json
 `-- README.md
+```
+
+## npm package metadata
+
+The project root includes `package.json` for the npm package
+`@obinexusltd/curl-polycall`. The package metadata lists every source folder in
+`directories` and keeps generated native build outputs out of the source package
+while preserving `build/bin` and `build/obj` with `.gitkeep` placeholders.
+
+Useful npm scripts:
+
+```sh
+npm run build
+npm run build:windows
+npm start
+npm run test:ffi
 ```
 
 ## Native ABI
