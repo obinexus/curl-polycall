@@ -23,6 +23,8 @@
   "files": [
     "build/bin/.gitkeep",
     "build/obj/.gitkeep",
+    "config/",
+    "debian/",
     "docs/",
     "examples/",
     "scripts/",
@@ -37,6 +39,8 @@
     "build": "build",
     "buildBin": "build/bin",
     "buildObj": "build/obj",
+    "config": "config",
+    "debian": "debian",
     "doc": "docs",
     "example": "examples",
     "lib": "src",
@@ -45,6 +49,7 @@
   },
   "scripts": {
     "build": "make",
+    "build:deb": "sh scripts/build-deb.sh",
     "build:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
     "clean": "make clean",
     "demo": "sh examples/curl.sh",

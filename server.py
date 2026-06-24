@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
@@ -59,8 +60,8 @@ class Handler(BaseHTTPRequestHandler):
 def main() -> None:
     global runtime
 
-    host = "127.0.0.1"
-    port = 8084
+    host = os.environ.get("CURL_POLYCALL_HOST", "127.0.0.1")
+    port = int(os.environ.get("CURL_POLYCALL_PORT", "8084"))
     try:
         runtime = ffi.load()
     except Exception as exc:

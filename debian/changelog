@@ -1,0 +1,6 @@
+curl-polycall (0.1.0) unstable; urgency=medium
+
+  * Initial Debian package for the curl-polycall direct FFI demo.
+  * Install POSIX commands, FHS config, docs, examples, and native FFI library.
+
+ -- OBINexus LTD <support@obinexus.com>  Wed, 24 Jun 2026 21:30:00 +0000

@@ -6,3 +6,14 @@ build/bin/*
 
 build/obj/*
 !build/obj/.gitkeep
+
+*.buildinfo
+*.changes
+*.deb
+*.dsc
+*.tar.*
+debian/.debhelper/
+debian/curl-polycall/
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars

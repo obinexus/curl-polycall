@@ -17,8 +17,15 @@ curl-polycall/
 |-- build/
 |   |-- bin/
 |   `-- obj/
+|-- config/
+|   `-- curl-polycall.env
+|-- debian/
+|   |-- control
+|   |-- rules
+|   `-- source/
 |-- docs/
-|   `-- FAULT_TOLERANT_FFI_PROOF.md
+|   |-- FAULT_TOLERANT_FFI_PROOF.md
+|   `-- UNIX_PACKAGING.md
 |-- examples/
 |   |-- curl.ps1
 |   `-- curl.sh
@@ -45,6 +52,7 @@ Useful npm scripts:
 
 ```sh
 npm run build
+npm run build:deb
 npm run build:windows
 npm start
 npm run demo
@@ -86,6 +94,37 @@ python server.py
 If Windows reports `cannot open file 'build\bin\polycall_ffi.dll'` or
 `Permission denied`, stop the running server with `Ctrl+C` before rebuilding.
 Python keeps the DLL loaded while `server.py` is running.
+
+## Unix and apt install
+
+For generic Unix installs:
+
+```sh
+make
+sudo make install PREFIX=/usr SYSCONFDIR=/etc
+```
+
+For Debian/Ubuntu local apt installs:
+
+```sh
+sudo apt update
+sudo apt install build-essential debhelper devscripts
+chmod +x debian/rules scripts/build-deb.sh
+sh scripts/build-deb.sh
+sudo apt install ../curl-polycall_0.1.0_$(dpkg --print-architecture).deb
+```
+
+Then run:
+
+```sh
+curl-polycall server
+curl-polycall health
+curl-polycall command ping
+```
+
+Plain `sudo apt install curl-polycall` works only after the `.deb` is published
+to an apt repository configured on the machine. See
+[docs/UNIX_PACKAGING.md](docs/UNIX_PACKAGING.md).
 
 ## Direct Python FFI
 

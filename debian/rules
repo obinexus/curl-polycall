@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	$(MAKE)
+
+override_dh_auto_install:
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/curl-polycall PREFIX=/usr SYSCONFDIR=/etc
+
+override_dh_auto_clean:
+	$(MAKE) clean

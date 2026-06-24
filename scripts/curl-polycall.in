@@ -1,0 +1,60 @@
+#!/usr/bin/env sh
+set -eu
+
+base="${CURL_POLYCALL_URL:-http://127.0.0.1:8084}"
+
+usage() {
+    cat <<'USAGE'
+Usage:
+  curl-polycall server
+  curl-polycall health
+  curl-polycall command [ping|health|unknown]
+  curl-polycall attach PATH
+  curl-polycall detach PATH
+  curl-polycall demo
+
+Environment:
+  CURL_POLYCALL_URL  Base URL for client commands, default http://127.0.0.1:8084
+USAGE
+}
+
+case "${1:-help}" in
+    server)
+        exec "@BINDIR@/curl-polycall-server"
+        ;;
+    health)
+        curl --silent --show-error --fail "$base/"
+        printf '\n'
+        ;;
+    command)
+        command_name="${2:-ping}"
+        curl --silent --show-error --fail "$base/command?cmd=$command_name"
+        printf '\n'
+        ;;
+    attach)
+        if [ "${2:-}" = "" ]; then
+            printf 'curl-polycall attach requires a dependency path\n' >&2
+            exit 2
+        fi
+        curl --silent --show-error --fail "$base/micro/attach?path=$2"
+        printf '\n'
+        ;;
+    detach)
+        if [ "${2:-}" = "" ]; then
+            printf 'curl-polycall detach requires a dependency path\n' >&2
+            exit 2
+        fi
+        curl --silent --show-error --fail "$base/micro/detach?path=$2"
+        printf '\n'
+        ;;
+    demo)
+        exec sh "@EXAMPLESDIR@/curl.sh"
+        ;;
+    help|--help|-h)
+        usage
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
+esac

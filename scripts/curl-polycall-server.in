@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+set -eu
+
+libexecdir="@LIBEXECDIR@"
+envfile="${CURL_POLYCALL_ENV:-@SYSCONFDIR@/curl-polycall/curl-polycall.env}"
+
+if [ -r "$envfile" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "$envfile"
+    set +a
+fi
+
+exec "${PYTHON:-python3}" "$libexecdir/server.py" "$@"
