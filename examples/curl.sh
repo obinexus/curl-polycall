@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+curl "http://127.0.0.1:8084/command?cmd=ping"
+printf '\n'
+curl "http://127.0.0.1:8084/micro/attach?path=build/bin/example.nsigii"
+printf '\n'
+curl "http://127.0.0.1:8084/micro/detach?path=build/bin/example.nsigii"
+printf '\n'
