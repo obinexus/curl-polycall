@@ -33,7 +33,13 @@ class PolycallFFI:
             raise FileNotFoundError(
                 f"FFI library not found: {self.library_path}. Build it first."
             )
-        self.lib = ctypes.CDLL(str(self.library_path))
+        try:
+            self.lib = ctypes.CDLL(str(self.library_path))
+        except OSError as exc:
+            raise OSError(
+                f"Unable to load FFI library {self.library_path}: {exc}. "
+                "Rebuild it with a compiler target that matches this Python process."
+            ) from exc
         self._bind()
 
     def _bind(self) -> None:

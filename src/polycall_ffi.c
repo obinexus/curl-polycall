@@ -1,8 +1,36 @@
 #define POLYCALL_FFI_EXPORTS
 #include "polycall_ffi.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+
+static int has_non_space(const char *value) {
+    if (value == NULL) {
+        return 0;
+    }
+    while (*value != '\0') {
+        if (!isspace((unsigned char)*value)) {
+            return 1;
+        }
+        value++;
+    }
+    return 0;
+}
+
+static int dependency_path_is_valid(const char *dependency_path) {
+    if (!has_non_space(dependency_path)) {
+        return 0;
+    }
+    for (const unsigned char *cursor = (const unsigned char *)dependency_path;
+         *cursor != '\0';
+         cursor++) {
+        if (*cursor < 32U || *cursor == 127U) {
+            return 0;
+        }
+    }
+    return 1;
+}
 
 static int write_result(char *out_buffer, int out_buffer_len, const char *status, const char *message) {
     if (out_buffer == NULL || out_buffer_len <= 0) {
@@ -18,7 +46,7 @@ static int write_result(char *out_buffer, int out_buffer_len, const char *status
 }
 
 int polycall_verify_command(const char *command, char *out_buffer, int out_buffer_len) {
-    if (command == NULL || strlen(command) == 0) {
+    if (!has_non_space(command)) {
         return write_result(out_buffer, out_buffer_len, "NO", "empty command");
     }
 
@@ -34,8 +62,8 @@ int polycall_verify_command(const char *command, char *out_buffer, int out_buffe
 }
 
 int polycall_runtime_micro_attach(const char *dependency_path, char *out_buffer, int out_buffer_len) {
-    if (dependency_path == NULL || strlen(dependency_path) == 0) {
-        return write_result(out_buffer, out_buffer_len, "NO", "missing dependency path");
+    if (!dependency_path_is_valid(dependency_path)) {
+        return write_result(out_buffer, out_buffer_len, "NO", "invalid dependency path");
     }
 
     /* Attach means register/link dependency metadata at runtime; no execution here. */
@@ -43,8 +71,8 @@ int polycall_runtime_micro_attach(const char *dependency_path, char *out_buffer,
 }
 
 int polycall_runtime_micro_detach(const char *dependency_path, char *out_buffer, int out_buffer_len) {
-    if (dependency_path == NULL || strlen(dependency_path) == 0) {
-        return write_result(out_buffer, out_buffer_len, "NO", "missing dependency path");
+    if (!dependency_path_is_valid(dependency_path)) {
+        return write_result(out_buffer, out_buffer_len, "NO", "invalid dependency path");
     }
 
     return write_result(out_buffer, out_buffer_len, "YES", "micro dependency detached");
