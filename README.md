@@ -48,6 +48,26 @@ The project root includes `package.json` for the npm package
 `directories` and keeps generated native build outputs out of the source package
 while preserving `build/bin` and `build/obj` with `.gitkeep` placeholders.
 
+The package also exposes two CLI entry points via npm:
+
+- `curl-polycall` → `scripts/curl-polycall.in`
+- `curl-polycall-server` → `scripts/curl-polycall-server.in`
+
+Install globally or run through `npx`:
+
+```sh
+npm install -g @obinexusltd/curl-polycall
+curl-polycall server
+curl-polycall health
+curl-polycall command ping
+```
+
+Or run directly with `npx`:
+
+```sh
+npx @obinexusltd/curl-polycall server
+```
+
 Useful npm scripts:
 
 ```sh

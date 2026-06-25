@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Minimal curl-to-Python-to-native direct FFI demonstration for libpolycall.",
   "license": "MIT",
-  "homepage": "https://github.com/obinexusltd/curl-polycall#readme",
+  "homepage": "https://github.com/obinexus/curl-polycall#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/obinexusltd/curl-polycall.git"
@@ -35,6 +35,10 @@
     "README.md",
     "LICENSE"
   ],
+  "bin": {
+    "curl-polycall": "scripts/curl-polycall.in",
+    "curl-polycall-server": "scripts/curl-polycall-server.in"
+  },
   "directories": {
     "build": "build",
     "buildBin": "build/bin",
