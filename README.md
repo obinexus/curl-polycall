@@ -2,11 +2,16 @@
 
 Minimal direct FFI demonstration for libpolycall-style command interpolation through `curl` or `wget`.
 
+This package targets the libpolycall 1.0.0 host release:
+
+<https://github.com/obinexus/libpolycall/releases#release-libpolycall-1.0.0>
+
 The point of this example is narrow:
 
 - expose a tiny native C ABI;
 - load it from Python 3 with `import ffi`;
 - serve HTTP endpoints that call the native ABI directly;
+- expose portable npm binaries for `npx @obinexusltd/curl-polycall`;
 - keep NSIGII as an external attachable artifact, not C code inside libpolycall;
 - keep `micro attach` and `micro detach` as runtime dependency registration only.
 
@@ -14,6 +19,9 @@ The point of this example is narrow:
 
 ```text
 curl-polycall/
+|-- bin/
+|   |-- curl-polycall.js
+|   `-- curl-polycall-server.js
 |-- build/
 |   |-- bin/
 |   `-- obj/
@@ -44,14 +52,24 @@ curl-polycall/
 ## npm package metadata
 
 The project root includes `package.json` for the npm package
-`@obinexusltd/curl-polycall`. The package metadata lists every source folder in
-`directories` and keeps generated native build outputs out of the source package
-while preserving `build/bin` and `build/obj` with `.gitkeep` placeholders.
+`@obinexusltd/curl-polycall`. The package metadata now sets the npm homepage and
+libpolycall host URL to the libpolycall 1.0.0 release page:
+
+```text
+https://github.com/obinexus/libpolycall/releases#release-libpolycall-1.0.0
+```
+
+The package metadata lists every source folder in `directories`, keeps generated
+native build outputs out of the source package, and preserves `build/bin` and
+`build/obj` with `.gitkeep` placeholders.
 
 The package also exposes two CLI entry points via npm:
 
-- `curl-polycall` → `scripts/curl-polycall.in`
-- `curl-polycall-server` → `scripts/curl-polycall-server.in`
+- `curl-polycall` → `bin/curl-polycall.js`
+- `curl-polycall-server` → `bin/curl-polycall-server.js`
+
+The `scripts/*.in` files are still kept for Unix package installation through
+`make install`; npm and npx use the portable Node wrappers in `bin/`.
 
 Install globally or run through `npx`:
 
@@ -65,13 +83,28 @@ curl-polycall command ping
 Or run directly with `npx`:
 
 ```sh
+npx @obinexusltd/curl-polycall --help
 npx @obinexusltd/curl-polycall server
+npx @obinexusltd/curl-polycall health
+npx @obinexusltd/curl-polycall command ping
+```
+
+The server command starts `server.py` from the package root using `PYTHON` if it
+is set, otherwise `python` on Windows and `python3` on Unix-like systems. Client
+commands use Node's built-in HTTP stack, so they do not require a system `curl`
+binary.
+
+If you want the secondary binary explicitly:
+
+```sh
+npx --package @obinexusltd/curl-polycall curl-polycall-server
 ```
 
 Useful npm scripts:
 
 ```sh
 npm run build
+npm test
 npm run build:deb
 npm run build:windows
 npm start
@@ -94,6 +127,10 @@ Platform outputs:
 - Linux: `build/bin/libpolycall_ffi.so`
 - macOS: `build/bin/libpolycall_ffi.dylib`
 - Objects: `build/obj`
+
+These files are build products. The npm package includes source, scripts,
+configuration, docs, examples, npm bin wrappers, and `.gitkeep` placeholders for
+`build/bin` and `build/obj`; it does not ship stale compiled binaries.
 
 ## Build
 
