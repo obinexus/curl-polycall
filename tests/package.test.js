@@ -1,40 +1,36 @@
 "use strict";
 
+const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const pkg = require("../package.json");
+const manifest = require("../polycall-binding.json");
 const index = require("../index.js");
+const root = path.join(__dirname, "..");
 
-const expectedReleaseUrl = "https://github.com/obinexus/libpolycall/releases#release-libpolycall-1.0.0";
+test("npm metadata points at the real repositories", () => {
+  assert.equal(pkg.name, "@obinexusltd/curl-polycall");
+  assert.equal(pkg.license, "MIT");
+  assert.equal(pkg.author, "Nnamdi Michael Okpala <okpalan@protonmail.com>");
+  assert.equal(pkg.homepage, "https://github.com/obinexus/curl-polycall#readme");
+  assert.equal(pkg.repository.url, "git+https://github.com/obinexus/curl-polycall.git");
+  assert.equal(pkg.bugs.url, "https://github.com/obinexus/curl-polycall/issues");
+  assert.equal(pkg.polycall.core_repository, "https://github.com/obinexus/polycall");
+  assert.deepEqual(pkg.bin, { "curl-polycall": "bin/curl-polycall" });
+  assert.equal(manifest.version, pkg.version);
+  assert.equal(manifest.core, "polycall >= 1.1.0 (binding ABI 1)");
+  const all = [JSON.stringify(pkg), JSON.stringify(manifest), fs.readFileSync(path.join(root, "README.md"), "utf8"),
+    fs.readFileSync(path.join(root, "debian", "control"), "utf8"), fs.readFileSync(path.join(root, "debian", "copyright"), "utf8")].join("\n");
+  assert.doesNotMatch(all, /github\.com\/obinexusltd|obinexus\/libpolycall|libpolycall-1\.0\.0|releases#release/);
+});
 
-assert.equal(pkg.name, "@obinexusltd/curl-polycall");
-assert.equal(pkg.license, "MIT");
-assert.equal(pkg.author, "Nnamdi Michael Okpala <okpalan@protonmail.com>");
-assert.equal(pkg.homepage, expectedReleaseUrl);
-assert.equal(pkg.config.libpolycallHostUrl, expectedReleaseUrl);
-assert.equal(pkg.libpolycall.release, "1.0.0");
-assert.equal(pkg.libpolycall.hostUrl, expectedReleaseUrl);
-assert.equal(pkg.publishConfig.access, "public");
-
-assert.equal(pkg.main, "index.js");
-assert.equal(pkg.bin["curl-polycall"], "bin/curl-polycall.js");
-assert.equal(pkg.bin["curl-polycall-server"], "bin/curl-polycall-server.js");
-
-for (const executable of Object.values(pkg.bin)) {
-  const fullPath = path.join(__dirname, "..", executable);
-  assert.ok(fs.existsSync(fullPath), `${executable} exists`);
-  assert.match(fs.readFileSync(fullPath, "utf8"), /^#!\/usr\/bin\/env node/);
-}
-
-for (const directory of ["bin", "config", "docs", "examples", "scripts", "src", "tests"]) {
-  assert.ok(fs.existsSync(path.join(__dirname, "..", directory)), `${directory} exists`);
-}
-
-assert.equal(index.packageName, pkg.name);
-assert.equal(index.releaseHostUrl, expectedReleaseUrl);
-assert.ok(index.listFiles("src").includes("src/polycall_ffi.c"));
-assert.ok(index.listFiles("bin").includes("bin/curl-polycall.js"));
-
-console.log("curl-polycall npm package metadata test: PASS");
+test("no squatting stub, no committed build products", () => {
+  for (const gone of ["src/polycall_ffi.c", "src/polycall_ffi.h", "ffi.py", "server.py", "build"]) {
+    assert.equal(fs.existsSync(path.join(root, gone)), false, `${gone} must not exist`);
+  }
+  assert.ok(fs.readFileSync(path.join(root, "bin", "curl-polycall"), "utf8").startsWith("#!/bin/sh\n"), "LF shebang");
+  assert.equal(index.client, path.join(root, "bin", "curl-polycall"));
+  assert.ok(index.listFiles("bin").includes("bin/curl-polycall"));
+});

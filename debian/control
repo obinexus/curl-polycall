@@ -3,25 +3,19 @@ Section: net
 Priority: optional
 Maintainer: OBINexus LTD <support@obinexus.com>
 Build-Depends:
- debhelper-compat (= 13),
- gcc,
- make,
- python3
+ debhelper-compat (= 13)
 Standards-Version: 4.6.2
 Rules-Requires-Root: no
-Homepage: https://github.com/obinexusltd/curl-polycall
+Homepage: https://github.com/obinexus/curl-polycall
 
 Package: curl-polycall
-Architecture: any
+Architecture: all
 Depends:
  ${misc:Depends},
- ${shlibs:Depends},
  curl,
- python3
-Description: Direct FFI curl endpoint demonstration for libpolycall
- curl-polycall is a minimal verification-first Foreign Function Interface
- demonstration. It exposes a native C ABI, loads it from Python with ctypes,
- and serves curl/wget-friendly HTTP endpoints that return YES, NO, or MAYBE.
- .
- NSIGII artifacts remain external runtime dependencies; they are not embedded
- into the native libpolycall demonstration.
+ coreutils
+Description: curl-based client of Polycall peer nodes (polycall-peer/1)
+ curl-polycall talks to Polycall peer nodes -- `polycall peer serve`, the C
+ library's polycall_peer_* nodes, or any conforming implementation -- over
+ HTTP/1.1 + JSON with curl: health, registry, register, acknowledged send
+ and inbox receive, with the polycall CLI's exit-code contract.

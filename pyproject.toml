@@ -1,0 +1,15 @@
+# QA descriptor for the Polycall binding matrix (read by polycall/qa/run_qa.py).
+# This repository is NOT a Python package and is not pip-installable;
+# its native manifest is package.json.
+[tool.polycall.binding]
+name = "curl-polycall"
+language = "POSIX sh + curl (polycall-peer/1 client)"
+native_manifest = "package.json"
+registry = "npm"
+package = "@obinexusltd/curl-polycall"
+abi = 1
+support = "supported"
+linux_image = "node:22"
+build = "make"
+test = "sh /qa/build-linux-core.sh && PATH=/opt/polycall/bin:$PATH CURL_POLYCALL_REQUIRE_TOOLS=1 npm test"
+windows_test = "Git Bash: POLYCALL_CLI=<.qa-core>/windows-msvc-x64/bin/polycall.exe npm test"

@@ -1,0 +1,14 @@
+{
+  "name": "curl-polycall",
+  "version": "0.2.0",
+  "package": "@obinexusltd/curl-polycall",
+  "language": "POSIX sh + curl",
+  "adapter": false,
+  "ffi": false,
+  "transport": "polycall-peer/1 over HTTP/1.1 (curl)",
+  "entry_point": "bin/curl-polycall",
+  "core": "polycall >= 1.1.0 (binding ABI 1)",
+  "core_repository": "https://github.com/obinexus/polycall",
+  "license": "MIT",
+  "author": "Nnamdi Michael Okpala <okpalan@protonmail.com>"
+}

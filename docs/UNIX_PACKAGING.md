@@ -1,98 +1,35 @@
-# Unix Packaging And Apt Install
+# Unix packaging
 
-## What apt can and cannot do
+`curl-polycall` is a single POSIX sh script (`bin/curl-polycall`) that needs
+`curl` and coreutils (`base64`, `od`, `wc`, `tr`, `sed`, `head`). There is
+nothing to compile and the package is architecture-independent.
 
-`sudo apt install curl-polycall` only works after `curl-polycall` has been
-published into an apt repository that the machine knows about.
-
-For local development, build a `.deb` first and install it with:
-
-```sh
-sudo apt install ./curl-polycall_0.1.0_$(dpkg --print-architecture).deb
-```
-
-## Standard Unix Layout
-
-The package follows the Filesystem Hierarchy Standard:
-
-```text
-/usr/bin/curl-polycall
-/usr/bin/curl-polycall-server
-/usr/lib/curl-polycall/
-/usr/lib/curl-polycall/build/bin/libpolycall_ffi.so
-/etc/curl-polycall/curl-polycall.env
-/usr/share/doc/curl-polycall/
-/usr/share/curl-polycall/examples/
-```
-
-Runtime config is read from `/etc/curl-polycall/curl-polycall.env`:
+## Generic install
 
 ```sh
-CURL_POLYCALL_HOST=127.0.0.1
-CURL_POLYCALL_PORT=8084
+sudo make install PREFIX=/usr
+# /usr/bin/curl-polycall
+# /usr/share/doc/curl-polycall/{README.md,LICENSE,UNIX_PACKAGING.md}
+# /usr/share/curl-polycall/examples/curl.sh
 ```
 
-## Debian/Ubuntu Local Package
+`make uninstall PREFIX=/usr` removes the same files.
 
-Install build tools:
+## Debian / Ubuntu package
 
 ```sh
-sudo apt update
 sudo apt install build-essential debhelper devscripts
-```
-
-Build the Debian package:
-
-```sh
-chmod +x debian/rules scripts/build-deb.sh
 sh scripts/build-deb.sh
+sudo apt install ../curl-polycall_0.2.0_all.deb
 ```
 
-Install the local package:
+`sudo apt install curl-polycall` (without a path) works only after the
+`.deb` is published to an apt repository configured on the machine; it is
+not published.
 
-```sh
-sudo apt install ../curl-polycall_0.1.0_$(dpkg --print-architecture).deb
-```
+## Configuration
 
-Use the installed commands:
-
-```sh
-curl-polycall server
-curl-polycall health
-curl-polycall command ping
-curl-polycall command unknown
-curl-polycall attach build/bin/example.nsigii
-curl-polycall detach build/bin/example.nsigii
-```
-
-## Generic Unix Install
-
-For Unix-like systems without apt:
-
-```sh
-make
-sudo make install PREFIX=/usr SYSCONFDIR=/etc
-```
-
-Remove:
-
-```sh
-sudo make uninstall PREFIX=/usr SYSCONFDIR=/etc
-```
-
-## Local Apt Repository
-
-After building the `.deb`, create a tiny local apt repository:
-
-```sh
-mkdir -p ~/apt-repo
-cp ../curl-polycall_0.1.0_$(dpkg --print-architecture).deb ~/apt-repo/
-cd ~/apt-repo
-dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
-echo "deb [trusted=yes] file:$HOME/apt-repo ./" | sudo tee /etc/apt/sources.list.d/curl-polycall-local.list
-sudo apt update
-sudo apt install curl-polycall
-```
-
-That is the step that makes plain `sudo apt install curl-polycall` work on a
-machine.
+There is no configuration file. The shared token of the peer group is read
+from `POLYCALL_DEV_TOKEN` (or the variable named by `--token-env`) and passed
+to curl through its config on stdin, so it does not appear in the process
+list.

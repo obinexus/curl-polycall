@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+# Build the architecture-independent Debian package (../curl-polycall_<ver>_all.deb).
 set -eu
 
 if ! command -v dpkg-buildpackage >/dev/null 2>&1; then
@@ -16,13 +17,9 @@ dpkg-buildpackage -us -uc -b
 
 cat <<'MSG'
 
-Debian package build complete.
+Debian package build complete. Install it with:
+  sudo apt install ../curl-polycall_0.2.0_all.deb
 
-Install locally with:
-  sudo apt install ../curl-polycall_0.1.0_$(dpkg --print-architecture).deb
-
-After install:
-  curl-polycall server
-  curl-polycall health
-  curl-polycall command ping
+Then, against a running peer node:
+  curl-polycall health --to 127.0.0.1:9002
 MSG

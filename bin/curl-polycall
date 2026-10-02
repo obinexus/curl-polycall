@@ -1,0 +1,265 @@
+#!/bin/sh
+# curl-polycall -- a polycall-peer/1 client built on curl(1).
+#
+# Talks to real Polycall peer nodes (`polycall peer serve`, the C library's
+# polycall_peer_* nodes, or any conforming implementation) over HTTP/1.1 +
+# JSON exactly as docs/PEER_PROTOCOL.md specifies:
+#   GET /health, GET /peers, POST /register, POST /receive, POST /inbox/next
+#
+# Needs: curl, base64, od, wc, sed, tr (POSIX sh). The shared token is read
+# from an environment variable (default POLYCALL_DEV_TOKEN) and handed to
+# curl through its config on stdin, so it never appears on a command line.
+#
+# Exit codes (the `polycall peer` contract): 0 ok, 1 refused/busy/remote
+# error, 2 usage or payload too large, 5 transport/protocol, 6 deadline /
+# no message, 7 authentication.
+
+set -u
+
+PROG=curl-polycall
+VERSION=0.2.0
+CURL=${CURL:-curl}
+MAX_PAYLOAD=1048576
+
+usage() {
+    cat <<'USAGE'
+usage: curl-polycall <command> --to HOST:PORT [options]
+
+commands:
+  health    GET /health of a node (no token needed)
+            [--expect-node ID]
+  peers     GET /peers: the node's own registry
+  register  POST /register: add ID -> HOST:PORT to the node's registry
+            --id ID --peer-endpoint HOST:PORT
+  send      POST /receive: deliver one payload, one attempt, acknowledged
+            (--payload TEXT | --payload-file FILE|-) [--from ID] [--id MSG_ID]
+            [--expect-node ID] [-t|--timeout-ms N]
+  recv      POST /inbox/next: take the node's oldest message
+            [-t|--timeout-ms N (0..30000)] [--raw]
+  version   print the version
+
+options:
+  --token-env NAME   environment variable holding the shared token
+                     (default POLYCALL_DEV_TOKEN; unset or empty = no token)
+  -t, --timeout-ms N deadline in milliseconds (default 5000)
+
+ids are 1-63 characters of [A-Za-z0-9._-]; payloads are at most 1 MiB.
+USAGE
+}
+
+fail() { # fail EXIT_CODE MESSAGE...
+    code=$1
+    shift
+    printf '%s: %s\n' "$PROG" "$*" >&2
+    exit "$code"
+}
+
+valid_id() {
+    case $1 in
+        '' | *[!A-Za-z0-9._-]*) return 1 ;;
+    esac
+    [ "${#1}" -le 63 ]
+}
+
+valid_endpoint() {
+    host=${1%:*}
+    port=${1##*:}
+    [ "$host" != "$1" ] || return 1
+    case $host in '' | *[!A-Za-z0-9._-]*) return 1 ;; esac
+    case $port in '' | *[!0-9]*) return 1 ;; esac
+    [ "${#port}" -le 5 ] && [ "$port" -ge 1 ] && [ "$port" -le 65535 ]
+}
+
+# ---------------------------------------------------------------- options
+
+[ $# -ge 1 ] || { usage >&2; exit 2; }
+CMD=$1
+shift
+case $CMD in
+    help | -h | --help) usage; exit 0 ;;
+    version | --version | -V) printf '%s %s (polycall-peer/1)\n' "$PROG" "$VERSION"; exit 0 ;;
+    health | peers | register | send | recv) ;;
+    *) usage >&2; fail 2 "unknown command '$CMD'" ;;
+esac
+
+TO='' FROM=curl-polycall MSG_ID='' PAYLOAD='' PAYLOAD_SET=0 PAYLOAD_FILE='' EXPECT=''
+PEER_ID='' PEER_EP='' TIMEOUT_MS='' RAW=0 TOKEN_ENV=POLYCALL_DEV_TOKEN
+need() { [ $# -ge 2 ] || fail 2 "option $1 requires a value"; }
+while [ $# -gt 0 ]; do
+    case $1 in
+        --to) need "$@"; TO=$2; shift 2 ;;
+        --from) need "$@"; FROM=$2; shift 2 ;;
+        --id) need "$@"; if [ "$CMD" = register ]; then PEER_ID=$2; else MSG_ID=$2; fi; shift 2 ;;
+        --payload) need "$@"; PAYLOAD=$2; PAYLOAD_SET=1; shift 2 ;;
+        --payload-file) need "$@"; PAYLOAD_FILE=$2; shift 2 ;;
+        --expect-node) need "$@"; EXPECT=$2; shift 2 ;;
+        --peer-endpoint) need "$@"; PEER_EP=$2; shift 2 ;;
+        -t | --timeout-ms) need "$@"; TIMEOUT_MS=$2; shift 2 ;;
+        --token-env) need "$@"; TOKEN_ENV=$2; shift 2 ;;
+        --raw) RAW=1; shift ;;
+        *) fail 2 "unknown option '$1'" ;;
+    esac
+done
+
+[ -n "$TO" ] || fail 2 "$CMD needs --to HOST:PORT"
+valid_endpoint "$TO" || fail 2 "--to '$TO' is not HOST:PORT"
+case $TOKEN_ENV in '' | [0-9]* | *[!A-Za-z0-9_]*) fail 2 "--token-env '$TOKEN_ENV' is not a variable name" ;; esac
+eval "TOKEN=\${$TOKEN_ENV:-}"
+case $TOKEN in *'"'* | *'\'* | *"
+"*) fail 2 "the token in \$$TOKEN_ENV contains a quote, backslash or newline" ;; esac
+if [ -n "$TIMEOUT_MS" ]; then
+    case $TIMEOUT_MS in '' | *[!0-9]*) fail 2 "--timeout-ms must be a non-negative integer" ;; esac
+fi
+[ -z "$EXPECT" ] || valid_id "$EXPECT" || fail 2 "--expect-node '$EXPECT' is not a valid id"
+
+TMP=$(mktemp -d 2>/dev/null || mktemp -d -t curl-polycall) || fail 1 "cannot create a temporary directory"
+trap 'rm -rf "$TMP"' EXIT
+trap 'exit 130' INT TERM
+
+seconds() { # milliseconds -> curl --max-time seconds
+    printf '%d.%03d' $(($1 / 1000)) $(($1 % 1000))
+}
+
+json_str() { # json_str FIELD FILE -> value of a "FIELD":"..." id-like string
+    sed -n "s/.*\"$1\":\"\\([A-Za-z0-9._:-]*\\)\".*/\\1/p" "$2" | head -n 1
+}
+
+json_has() { # json_has FRAGMENT FILE
+    tr -d ' \r\n' < "$2" | grep -F -q "$1"
+}
+
+# http METHOD PATH MAX_MS [BODY_FILE] -> HTTP_CODE, $TMP/resp; exits on transport errors
+http() {
+    method=$1 path=$2 max_ms=$3 body=${4:-}
+    : > "$TMP/resp"
+    set -- --silent --show-error --http1.1 --max-time "$(seconds "$max_ms")" \
+        -o "$TMP/resp" -w '%{http_code}' -X "$method" \
+        -H 'Accept: application/json' -H 'Connection: close' -H 'Expect:' \
+        -A "$PROG/$VERSION (polycall-peer/1)"
+    if [ -n "$body" ]; then
+        set -- "$@" -H 'Content-Type: application/json' --data-binary "@$body"
+    elif [ "$method" = POST ]; then
+        set -- "$@" -H 'Content-Length: 0'
+    fi
+    if [ -n "$TOKEN" ]; then
+        cfg="header = \"Authorization: Bearer $TOKEN\""
+    else
+        cfg=''
+    fi
+    HTTP_CODE=$(printf '%s\n' "$cfg" | "$CURL" -K - "$@" "http://$TO$path" 2>"$TMP/err")
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        why=$(tr '\n' ' ' < "$TMP/err")
+        case $rc in
+            28) fail 6 "no reply from $TO within $max_ms ms ($why)" ;;
+            2) fail 2 "curl rejected the request options ($why)" ;;
+            127) fail 1 "curl not found (set CURL)" ;;
+            *) fail 5 "cannot reach $TO (curl exit $rc: $why)" ;;
+        esac
+    fi
+}
+
+http_failure() { # map a non-2xx answer to the exit contract
+    body=$(head -c 500 "$TMP/resp")
+    case $HTTP_CODE in
+        401) fail 7 "$TO refused the token (HTTP 401): $body" ;;
+        413) fail 2 "$TO: payload too large (HTTP 413): $body" ;;
+        503) fail 1 "$TO is busy (HTTP 503), retry later with the same id: $body" ;;
+        404 | 405 | 501 | 505) fail 5 "$TO does not speak polycall-peer/1 here (HTTP $HTTP_CODE): $body" ;;
+        *) fail 1 "$TO answered HTTP $HTTP_CODE: $body" ;;
+    esac
+}
+
+TIMEOUT=${TIMEOUT_MS:-5000}
+
+case $CMD in
+health)
+    http GET /health "$TIMEOUT"
+    [ "$HTTP_CODE" = 200 ] || http_failure
+    json_has '"protocol":"polycall-peer/1"' "$TMP/resp" || fail 5 "$TO is not a polycall-peer/1 node"
+    if [ -n "$EXPECT" ]; then
+        got=$(json_str node_id "$TMP/resp")
+        [ "$got" = "$EXPECT" ] || fail 5 "$TO answers as '$got', expected '$EXPECT'"
+    fi
+    cat "$TMP/resp"
+    printf '\n'
+    ;;
+peers)
+    http GET /peers "$TIMEOUT"
+    [ "$HTTP_CODE" = 200 ] || http_failure
+    cat "$TMP/resp"
+    printf '\n'
+    ;;
+register)
+    valid_id "$PEER_ID" || fail 2 "register needs --id ID ([A-Za-z0-9._-]{1,63})"
+    valid_endpoint "$PEER_EP" || fail 2 "register needs --peer-endpoint HOST:PORT"
+    printf '{"node_id":"%s","endpoint":"%s"}' "$PEER_ID" "$PEER_EP" > "$TMP/body"
+    http POST /register "$TIMEOUT" "$TMP/body"
+    [ "$HTTP_CODE" = 200 ] || http_failure
+    cat "$TMP/resp"
+    printf '\n'
+    ;;
+send)
+    valid_id "$FROM" || fail 2 "--from '$FROM' is not a valid id"
+    if [ "$PAYLOAD_SET" = 1 ] && [ -n "$PAYLOAD_FILE" ]; then
+        fail 2 "give exactly one of --payload TEXT / --payload-file FILE|-"
+    fi
+    if [ "$PAYLOAD_SET" = 1 ]; then
+        printf '%s' "$PAYLOAD" > "$TMP/payload"
+    elif [ "$PAYLOAD_FILE" = - ]; then
+        cat > "$TMP/payload" || fail 2 "cannot read the payload from stdin"
+    elif [ -n "$PAYLOAD_FILE" ]; then
+        [ -f "$PAYLOAD_FILE" ] || fail 4 "payload file '$PAYLOAD_FILE' not found"
+        cat "$PAYLOAD_FILE" > "$TMP/payload" || fail 2 "cannot read '$PAYLOAD_FILE'"
+    else
+        fail 2 "give exactly one of --payload TEXT / --payload-file FILE|-"
+    fi
+    size=$(wc -c < "$TMP/payload" | tr -d ' ')
+    [ "$size" -le "$MAX_PAYLOAD" ] || fail 2 "payload of $size bytes exceeds the 1 MiB limit"
+    if [ -z "$MSG_ID" ]; then
+        MSG_ID="curl-$(od -An -N12 -tx1 /dev/urandom 2>/dev/null | tr -d ' \n')"
+        [ "$MSG_ID" != curl- ] || MSG_ID="curl-$(date +%s)-$$"
+    fi
+    valid_id "$MSG_ID" || fail 2 "--id '$MSG_ID' is not a valid message id"
+    {
+        printf '{"v":1,"id":"%s","from":"%s","payload_b64":"' "$MSG_ID" "$FROM"
+        base64 < "$TMP/payload" | tr -d '\r\n'
+        printf '"}'
+    } > "$TMP/body" || fail 1 "cannot encode the payload (base64)"
+    http POST /receive "$TIMEOUT" "$TMP/body"
+    [ "$HTTP_CODE" = 200 ] || http_failure
+    json_has '"ok":true' "$TMP/resp" || fail 5 "$TO answered 200 without acknowledging '$MSG_ID'"
+    ack_id=$(json_str id "$TMP/resp")
+    ack_node=$(json_str node_id "$TMP/resp")
+    [ "$ack_id" = "$MSG_ID" ] && [ -n "$ack_node" ] ||
+        fail 5 "$TO answered 200 without acknowledging '$MSG_ID'"
+    if [ -n "$EXPECT" ] && [ "$ack_node" != "$EXPECT" ]; then
+        fail 5 "message '$MSG_ID' was acknowledged by '$ack_node', expected '$EXPECT'"
+    fi
+    duplicate=false
+    json_has '"duplicate":true' "$TMP/resp" && duplicate=true
+    printf '{"delivered":true,"to":"%s","node_id":"%s","from":"%s","id":"%s","bytes":%s,"duplicate":%s}\n' \
+        "$TO" "$ack_node" "$FROM" "$MSG_ID" "$size" "$duplicate"
+    ;;
+recv)
+    [ "$TIMEOUT" -le 30000 ] || fail 2 "recv --timeout-ms is at most 30000"
+    printf '{"timeout_ms":%s}' "$TIMEOUT" > "$TMP/body"
+    http POST /inbox/next $((TIMEOUT + 5000)) "$TMP/body"
+    [ "$HTTP_CODE" = 200 ] || http_failure
+    if json_has '"message":null' "$TMP/resp"; then
+        fail 6 "no message arrived within $TIMEOUT ms"
+    fi
+    from=$(json_str from "$TMP/resp")
+    mid=$(json_str id "$TMP/resp")
+    b64=$(sed -n 's/.*"payload_b64":"\([A-Za-z0-9+\/=]*\)".*/\1/p' "$TMP/resp" | head -n 1)
+    valid_id "$from" && valid_id "$mid" || fail 5 "$TO returned a malformed message"
+    printf '%s' "$b64" | base64 -d > "$TMP/payload" 2>/dev/null || fail 5 "$TO returned invalid base64"
+    if [ "$RAW" = 1 ]; then
+        cat "$TMP/payload"
+    else
+        size=$(wc -c < "$TMP/payload" | tr -d ' ')
+        printf '{"from":"%s","id":"%s","bytes":%s,"payload_b64":"%s"}\n' "$from" "$mid" "$size" "$b64"
+    fi
+    ;;
+esac
+exit 0

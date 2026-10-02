@@ -1,3 +1,11 @@
+curl-polycall (0.2.0) unstable; urgency=medium
+
+  * Rework into a curl(1)-based polycall-peer/1 client (bin/curl-polycall).
+  * Drop the bundled polycall_ffi stub library, the Python server and the
+    committed build products.
+
+ -- OBINexus LTD <support@obinexus.com>  Fri, 02 Oct 2026 21:00:00 +0000
+
 curl-polycall (0.1.0) unstable; urgency=medium
 
   * Initial Debian package for the curl-polycall direct FFI demo.

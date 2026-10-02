@@ -1,10 +1,10 @@
 {
   "name": "@obinexusltd/curl-polycall",
-  "version": "0.1.1",
-  "description": "curl/HTTP to Python-to-native direct FFI demonstration for libpolycall.",
+  "version": "0.2.0",
+  "description": "curl(1)-based client of Polycall peer nodes: polycall-peer/1 health, peers, register, send and receive over HTTP with curl.",
   "license": "MIT",
   "author": "Nnamdi Michael Okpala <okpalan@protonmail.com>",
-  "homepage": "https://github.com/obinexus/libpolycall/releases#release-libpolycall-1.0.0",
+  "homepage": "https://github.com/obinexus/curl-polycall#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/obinexus/curl-polycall.git"
@@ -13,80 +13,59 @@
     "url": "https://github.com/obinexus/curl-polycall/issues"
   },
   "keywords": [
-    "ffi",
-    "ctypes",
     "curl",
     "polycall",
-    "libpolycall",
-    "native-abi"
+    "polycall-peer",
+    "peer-to-peer",
+    "http",
+    "cli"
   ],
   "type": "commonjs",
   "main": "index.js",
   "exports": {
     ".": "./index.js",
     "./package.json": "./package.json",
-    "./ffi": "./ffi.py",
-    "./server": "./server.py",
-    "./bin/curl-polycall": "./bin/curl-polycall.js",
-    "./bin/curl-polycall-server": "./bin/curl-polycall-server.js"
+    "./bin/curl-polycall": "./bin/curl-polycall"
   },
   "files": [
     "bin/",
-    "build/bin/.gitkeep",
-    "build/obj/.gitkeep",
-    "config/",
     "debian/",
     "docs/",
     "examples/",
     "scripts/",
-    "src/",
     "tests/",
-    "ffi.py",
-    "server.py",
     "index.js",
     "Makefile",
+    "polycall-binding.json",
     "README.md",
     "LICENSE"
   ],
   "bin": {
-    "curl-polycall": "bin/curl-polycall.js",
-    "curl-polycall-server": "bin/curl-polycall-server.js"
+    "curl-polycall": "bin/curl-polycall"
   },
   "directories": {
     "bin": "bin",
-    "build": "build",
-    "config": "config",
     "doc": "docs",
     "example": "examples",
-    "lib": "src",
     "test": "tests"
   },
   "scripts": {
-    "build": "make",
     "build:deb": "sh scripts/build-deb.sh",
-    "build:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
-    "clean": "make clean",
     "demo": "sh examples/curl.sh",
-    "demo:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File examples/curl.ps1",
-    "start": "python server.py",
-    "start:python3": "python3 server.py",
-    "test": "npm run test:package && npm run test:bin",
-    "test:bin": "node tests/bin.test.js",
-    "test:ffi": "python -c \"import ffi; runtime = ffi.load(); print(runtime.command('ping'))\"",
-    "test:package": "node tests/package.test.js",
-    "prepack": "npm test"
+    "test": "node --test tests/package.test.js tests/bin.test.js tests/peer.test.js",
+    "test:package": "node --test tests/package.test.js",
+    "test:peer": "node --test tests/peer.test.js",
+    "prepack": "node --test tests/package.test.js tests/bin.test.js"
   },
   "publishConfig": {
     "access": "public"
   },
-  "config": {
-    "libpolycallHostUrl": "https://github.com/obinexus/libpolycall/releases#release-libpolycall-1.0.0"
-  },
-  "libpolycall": {
-    "release": "1.0.0",
-    "hostUrl": "https://github.com/obinexus/libpolycall/releases#release-libpolycall-1.0.0"
+  "polycall": {
+    "protocol": "polycall-peer/1",
+    "core": "polycall >= 1.1.0",
+    "core_repository": "https://github.com/obinexus/polycall"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=20"
   }
 }

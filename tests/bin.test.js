@@ -1,33 +1,40 @@
 "use strict";
 
+// The client's own surface (no node needed): help, version, syntax, usage errors.
+
+const test = require("node:test");
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
 const pkg = require("../package.json");
-const root = path.resolve(__dirname, "..");
-const cli = path.join(root, pkg.bin["curl-polycall"]);
-const serverCli = path.join(root, pkg.bin["curl-polycall-server"]);
+const client = path.join(__dirname, "..", pkg.bin["curl-polycall"]);
+const haveSh = spawnSync("sh", ["-c", "exit 0"]).status === 0;
+const skip = haveSh ? false : "no POSIX sh on PATH";
 
 function run(args) {
-  return spawnSync(process.execPath, args, {
-    cwd: root,
-    encoding: "utf8"
-  });
+  return spawnSync("sh", [client, ...args], { encoding: "utf8" });
 }
 
-const help = run([cli, "--help"]);
-assert.equal(help.status, 0, help.stderr);
-assert.match(help.stdout, /Usage:/);
-assert.match(help.stdout, /curl-polycall server/);
-assert.match(help.stdout, /release-libpolycall-1\.0\.0/);
+test("sh -n: the script parses", { skip }, () => {
+  const r = spawnSync("sh", ["-n", client], { encoding: "utf8" });
+  assert.equal(r.status, 0, r.stderr);
+});
 
-const version = run([cli, "--version"]);
-assert.equal(version.status, 0, version.stderr);
-assert.equal(version.stdout.trim(), pkg.version);
+test("help and version", { skip }, () => {
+  const help = run(["--help"]);
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /curl-polycall <command> --to HOST:PORT/);
+  for (const cmd of ["health", "peers", "register", "send", "recv"]) assert.match(help.stdout, new RegExp(`\\n  ${cmd} `));
+  const version = run(["version"]);
+  assert.equal(version.stdout.trim(), `curl-polycall ${pkg.version} (polycall-peer/1)`);
+});
 
-const serverHelp = run([serverCli, "--help"]);
-assert.equal(serverHelp.status, 0, serverHelp.stderr);
-assert.match(serverHelp.stdout, /curl-polycall-server/);
-
-console.log("curl-polycall npm bin smoke test: PASS");
+test("usage errors exit 2 without touching the network", { skip }, () => {
+  assert.equal(run([]).status, 2);
+  assert.equal(run(["health"]).status, 2);
+  assert.equal(run(["health", "--to", "999.1.1.1:99999"]).status, 2);
+  assert.equal(run(["send", "--to", "127.0.0.1:1", "--payload", "a", "--payload-file", "x"]).status, 2);
+  assert.equal(run(["send", "--to", "127.0.0.1:1", "--from", "has space", "--payload", "a"]).status, 2);
+  assert.equal(run(["peers", "--to", "127.0.0.1:1", "--token-env", "1BAD"]).status, 2);
+});

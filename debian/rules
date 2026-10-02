@@ -4,10 +4,9 @@
 	dh $@
 
 override_dh_auto_build:
-	$(MAKE)
+	$(MAKE) all
 
 override_dh_auto_install:
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/curl-polycall PREFIX=/usr SYSCONFDIR=/etc
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/curl-polycall PREFIX=/usr
 
-override_dh_auto_clean:
-	$(MAKE) clean
+override_dh_auto_test:

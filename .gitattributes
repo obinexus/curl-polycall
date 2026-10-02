@@ -1,0 +1,6 @@
+# Shell scripts, makefiles and Debian packaging must keep LF endings on every
+# checkout (a CRLF checkout breaks sh, make and dpkg-buildpackage).
+bin/curl-polycall text eol=lf
+*.sh text eol=lf
+Makefile text eol=lf
+debian/** text eol=lf

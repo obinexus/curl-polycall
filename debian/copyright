@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: curl-polycall
-Source: https://github.com/obinexusltd/curl-polycall
+Source: https://github.com/obinexus/curl-polycall
 
 Files: *
 Copyright: 2026 OBINexus

@@ -1,33 +1,31 @@
-#!/usr/bin/env sh
+#!/bin/sh
+# polycall-peer/1 with nothing but curl: the raw requests bin/curl-polycall
+# makes, against a running Polycall peer node.
+#
+#   POLYCALL_DEV_TOKEN=secret polycall peer serve -n beta -e 127.0.0.1:9002 &
+#   POLYCALL_DEV_TOKEN=secret sh examples/curl.sh 127.0.0.1:9002
 set -eu
-base="http://127.0.0.1:8084"
 
-printf 'Waiting for curl-polycall at %s ...\n' "$base"
-ready=0
-i=0
-while [ "$i" -lt 30 ]; do
-    if curl --silent --fail --output /dev/null "$base/"; then
-        ready=1
-        break
-    fi
-    i=$((i + 1))
-    sleep 0.5
-done
+node=${1:-127.0.0.1:9002}
+auth="Authorization: Bearer ${POLYCALL_DEV_TOKEN:-}"
 
-if [ "$ready" -ne 1 ]; then
-    printf 'curl-polycall is not reachable at %s. Start it with: python server.py\n' "$base" >&2
-    exit 1
-fi
+echo "# GET /health (no token needed)"
+curl --silent --show-error "http://$node/health"
+echo
 
-curl --silent --show-error "$base/"
-printf '\n'
-curl --silent --show-error "$base/command?cmd=ping"
-printf '\n'
-curl --silent --show-error "$base/command?cmd=health"
-printf '\n'
-curl --silent --show-error "$base/command?cmd=unknown"
-printf '\n'
-curl --silent --show-error "$base/micro/attach?path=build/bin/example.nsigii"
-printf '\n'
-curl --silent --show-error "$base/micro/detach?path=build/bin/example.nsigii"
-printf '\n'
+echo "# POST /receive: deliver 'hello' as message demo-1 from node 'curl-demo'"
+payload=$(printf 'hello' | base64 | tr -d '\r\n')
+printf '%s\n' "header = \"$auth\"" | curl --silent --show-error -K - -H 'Content-Type: application/json' -H 'Expect:' \
+    --data-binary "{\"v\":1,\"id\":\"demo-1\",\"from\":\"curl-demo\",\"payload_b64\":\"$payload\"}" \
+    "http://$node/receive"
+echo
+
+echo "# POST /inbox/next: take the oldest message (wait up to 1 s)"
+printf '%s\n' "header = \"$auth\"" | curl --silent --show-error -K - -H 'Content-Type: application/json' \
+    --data-binary '{"timeout_ms":1000}' "http://$node/inbox/next"
+echo
+
+echo "# the same through the client"
+curl_polycall=$(dirname "$0")/../bin/curl-polycall
+sh "$curl_polycall" send --to "$node" --from curl-demo --id demo-2 --payload 'hello again'
+sh "$curl_polycall" recv --to "$node" -t 1000
