@@ -52,7 +52,7 @@ same from PowerShell with `curl.exe`.
 ```sh
 sudo make install PREFIX=/usr          # /usr/bin/curl-polycall
 sh scripts/build-deb.sh                # Debian package (architecture: all)
-npm install @obinexusltd/curl-polycall # npm bin wrapper (needs sh on PATH; not yet published)
+npm install curl-polycall # npm bin wrapper (needs sh on PATH; not yet published)
 ```
 
 See [docs/UNIX_PACKAGING.md](docs/UNIX_PACKAGING.md).

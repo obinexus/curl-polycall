@@ -1,5 +1,5 @@
 {
-  "name": "@obinexusltd/curl-polycall",
+  "name": "curl-polycall",
   "version": "0.2.0",
   "description": "curl(1)-based client of Polycall peer nodes: polycall-peer/1 health, peers, register, send and receive over HTTP with curl.",
   "license": "MIT",

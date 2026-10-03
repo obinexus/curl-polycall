@@ -11,7 +11,7 @@ const index = require("../index.js");
 const root = path.join(__dirname, "..");
 
 test("npm metadata points at the real repositories", () => {
-  assert.equal(pkg.name, "@obinexusltd/curl-polycall");
+  assert.equal(pkg.name, "curl-polycall");
   assert.equal(pkg.license, "MIT");
   assert.equal(pkg.author, "Nnamdi Michael Okpala <okpalan@protonmail.com>");
   assert.equal(pkg.homepage, "https://github.com/obinexus/curl-polycall#readme");

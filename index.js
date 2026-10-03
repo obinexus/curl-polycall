@@ -1,6 +1,6 @@
 "use strict";
 
-// @obinexusltd/curl-polycall: the package's executable is bin/curl-polycall,
+// curl-polycall: the package's executable is bin/curl-polycall,
 // a POSIX sh + curl(1) client of the polycall-peer/1 protocol. This module
 // only exposes where things are, for tooling that wants to run it.
 

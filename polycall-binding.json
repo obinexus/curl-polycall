@@ -1,7 +1,7 @@
 {
   "name": "curl-polycall",
   "version": "0.2.0",
-  "package": "@obinexusltd/curl-polycall",
+  "package": "curl-polycall",
   "language": "POSIX sh + curl",
   "adapter": false,
   "ffi": false,
