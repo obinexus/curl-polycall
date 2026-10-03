@@ -12,8 +12,7 @@ Package: curl-polycall
 Architecture: all
 Depends:
  ${misc:Depends},
- curl,
- coreutils
+ curl
 Description: curl-based client of Polycall peer nodes (polycall-peer/1)
  curl-polycall talks to Polycall peer nodes -- `polycall peer serve`, the C
  library's polycall_peer_* nodes, or any conforming implementation -- over

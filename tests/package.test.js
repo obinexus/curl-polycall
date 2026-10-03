@@ -30,7 +30,10 @@ test("no squatting stub, no committed build products", () => {
   for (const gone of ["src/polycall_ffi.c", "src/polycall_ffi.h", "ffi.py", "server.py", "build"]) {
     assert.equal(fs.existsSync(path.join(root, gone)), false, `${gone} must not exist`);
   }
-  assert.ok(fs.readFileSync(path.join(root, "bin", "curl-polycall"), "utf8").startsWith("#!/bin/sh\n"), "LF shebang");
+  // "#!/usr/bin/env sh", LF: for "#!/bin/sh" npm's Windows shims run the literal
+  // path "/bin/sh" (-> \bin\sh on the current drive) and the bin cannot start;
+  // with env they run "sh" from PATH (Git Bash / MSYS2).
+  assert.ok(fs.readFileSync(path.join(root, "bin", "curl-polycall"), "utf8").startsWith("#!/usr/bin/env sh\n"), "env sh shebang, LF");
   assert.equal(index.client, path.join(root, "bin", "curl-polycall"));
   assert.ok(index.listFiles("bin").includes("bin/curl-polycall"));
 });

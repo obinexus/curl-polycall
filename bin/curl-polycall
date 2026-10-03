@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # curl-polycall -- a polycall-peer/1 client built on curl(1).
 #
 # Talks to real Polycall peer nodes (`polycall peer serve`, the C library's
