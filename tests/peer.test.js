@@ -49,7 +49,10 @@ function run(cmd, args, { extraEnv = {}, input } = {}) {
     }, (error, stdout, stderr) => {
       resolve({ status: error ? (typeof error.code === "number" ? error.code : -1) : 0, stdout, stderr: stderr.toString() });
     });
-    child.stdin.end(input === undefined ? "" : input);
+    // A child that exits before reading stdin (a usage error, say) closes the
+    // pipe: EPIPE then belongs to that child, not to this test.
+    child.stdin.on("error", (error) => { if (error.code !== "EPIPE" && error.code !== "EOF") throw error; });
+    if (input === undefined) child.stdin.end(); else child.stdin.end(input);
   });
 }
 
