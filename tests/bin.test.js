@@ -30,6 +30,19 @@ test("help and version", { skip }, () => {
   assert.equal(version.stdout.trim(), `curl-polycall ${pkg.version} (polycall-peer/1)`);
 });
 
+test("missing curl -> exit 1 naming it; unusable tokens are refused before any request", { skip }, () => {
+  const noCurl = spawnSync("sh", [client, "peers", "--to", "127.0.0.1:1"],
+    { encoding: "utf8", env: { ...process.env, CURL: "definitely-not-a-curl-binary" } });
+  assert.equal(noCurl.status, 1, noCurl.stderr);
+  assert.match(noCurl.stderr, /curl not found \(set CURL\)/);
+  for (const bad of ['has"quote', "back\\slash", "new\nline"]) {
+    const r = spawnSync("sh", [client, "peers", "--to", "127.0.0.1:1"],
+      { encoding: "utf8", env: { ...process.env, POLYCALL_DEV_TOKEN: bad, CURL: "definitely-not-a-curl-binary" } });
+    assert.equal(r.status, 2, JSON.stringify(bad));
+    assert.match(r.stderr, /contains a quote, backslash or newline/);
+  }
+});
+
 test("usage errors exit 2 without touching the network", { skip }, () => {
   assert.equal(run([]).status, 2);
   assert.equal(run(["health"]).status, 2);

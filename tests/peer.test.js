@@ -33,10 +33,16 @@ const missing = [
   available("sh", ["-c", "exit 0"]) ? "" : "no POSIX sh on PATH",
   available("curl", ["--version"]) ? "" : "no curl on PATH",
   available("sh", ["-c", "printf a | base64"]) ? "" : "no base64 on PATH",
-  cli ? "" : "no polycall CLI (set POLYCALL_CLI or put polycall on PATH)"
+  cli ? "" : (process.env.POLYCALL_CLI ? `POLYCALL_CLI=${process.env.POLYCALL_CLI} does not exist`
+    : "no polycall CLI (set POLYCALL_CLI or put polycall on PATH)")
 ].filter(Boolean).join("; ");
-if (missing && process.env.CURL_POLYCALL_REQUIRE_TOOLS === "1") throw new Error(missing);
-const suite = missing ? (name) => test(name, { skip: missing }, () => {}) : describe;
+// Missing tools: ONE skipped test carrying the reason (never a pass), or a
+// FAILING test when they are required (CURL_POLYCALL_REQUIRE_TOOLS=1, or an
+// explicitly configured POLYCALL_CLI that does not exist).
+const required = process.env.CURL_POLYCALL_REQUIRE_TOOLS === "1" || Boolean(process.env.POLYCALL_CLI && !cli);
+const suite = !missing ? describe
+  : required ? (name) => test(`${name} -- REQUIRED but unavailable`, () => { throw new Error(missing); })
+    : (name) => test(name, { skip: missing }, () => {});
 
 const token = `t-${crypto.randomBytes(12).toString("hex")}`;
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "curl-polycall-"));
@@ -211,11 +217,28 @@ suite("curl-polycall vs C peer nodes (polycall peer serve)", () => {
     }
   });
 
-  test("receive timeout on an empty inbox (exit 6)", async () => {
+  test("receive timeout on an empty inbox (exit 6); -t 0 polls", async () => {
     const t0 = Date.now();
     const got = await curlPolycall(["recv", "--to", quiet.endpoint, "-t", "200"]);
     assert.equal(got.status, 6);
     assert.ok(Date.now() - t0 < 5000, "honours the timeout");
+    const poll = await curlPolycall(["recv", "--to", quiet.endpoint, "-t", "0"]);
+    assert.equal(poll.status, 6, poll.stderr);
+    assert.match(poll.stderr, /no message arrived within 0 ms/);
+  });
+
+  test("payload file under a non-ASCII directory; non-ASCII --payload text", async () => {
+    const dir = path.join(scratch, "ünïcödé-漢字-🚀");
+    fs.mkdirSync(dir, { recursive: true });
+    const bytes = Buffer.from("payload from a ünïcödé path – 漢字", "utf8");
+    const file = path.join(dir, "payload.bin");
+    fs.writeFileSync(file, bytes);
+    const sent = await curlPolycall(["send", "--to", printer.endpoint, "--payload-file", file, "--id", "uni-path"]);
+    assert.equal(sent.status, 0, sent.stderr);
+    assert.ok(Buffer.from((await printer.message("uni-path")).payload_b64, "base64").equals(bytes));
+    const text = await curlPolycall(["send", "--to", printer.endpoint, "--payload", "Ωμέγα 🚀", "--id", "uni-text"]);
+    assert.equal(text.status, 0, text.stderr);
+    assert.equal(Buffer.from((await printer.message("uni-text")).payload_b64, "base64").toString("utf8"), "Ωμέγα 🚀");
   });
 
   test("duplicate message id is stored once", async () => {

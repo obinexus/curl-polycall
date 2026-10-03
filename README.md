@@ -66,10 +66,14 @@ npm test
 `tests/peer.test.js` runs `curl-polycall` against real `polycall peer serve`
 nodes: payloads (empty, UTF-8, binary with NUL, exactly 1 MiB, 1 MiB + 1) in
 both directions with bytes, sender id and message id checked at the
-receiver, duplicates, registry ownership, auth failures, dead peers, wrong
-identity, timeouts, concurrent senders and backpressure. Without `sh`,
-`curl`, `base64` or a `polycall` CLI (`POLYCALL_CLI` or `PATH`) it is
-reported as **skipped** with the reason (`CURL_POLYCALL_REQUIRE_TOOLS=1`
+receiver, payload files under non-ASCII paths, duplicates, registry
+ownership, auth failures, dead peers, wrong identity, timeouts (and `-t 0`
+polling), concurrent senders and backpressure. `tests/examples.test.js`
+runs `examples/curl.sh` and, on Windows, `examples/curl.ps1` under every
+PowerShell found (pwsh 7, Windows PowerShell 5.1) against a real node.
+Without `sh`, `curl`, `base64` or a `polycall` CLI (`POLYCALL_CLI` or
+`PATH`) those suites are reported as **skipped** with the reason
+(`CURL_POLYCALL_REQUIRE_TOOLS=1`, or a `POLYCALL_CLI` that does not exist,
 makes that a failure).
 
 ## License

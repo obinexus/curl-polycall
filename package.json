@@ -52,9 +52,10 @@
   "scripts": {
     "build:deb": "sh scripts/build-deb.sh",
     "demo": "sh examples/curl.sh",
-    "test": "node --test tests/package.test.js tests/bin.test.js tests/peer.test.js",
+    "test": "node --test tests/package.test.js tests/bin.test.js tests/peer.test.js tests/examples.test.js",
     "test:package": "node --test tests/package.test.js",
     "test:peer": "node --test tests/peer.test.js",
+    "test:examples": "node --test tests/examples.test.js",
     "prepack": "node --test tests/package.test.js tests/bin.test.js"
   },
   "publishConfig": {
